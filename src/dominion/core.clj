@@ -122,7 +122,7 @@
   state)
 
 (defn evaluate [state]
-  (let [games   (map (fn [game] (:turn (rollout (randomize state)))) (range 1000))
+  (let [games   (map (fn [game] (:turn (rollout (randomize state)))) (range 100))
         average (/ (apply + games) (count games))]
     (println (double average))))
 
