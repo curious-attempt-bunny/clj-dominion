@@ -1,27 +1,31 @@
 (ns dominion.core)
 
+(defrecord State [supply deck discard hard])
+
+(defrecord Card [name cost types victory-value money-value])
+
 (defn draw [state remaining]
- (if (zero? remaining)
-    state
-    (if (empty? (:deck state))
+  (cond
+    (zero? remaining) state
+    (empty? (:deck state))
       (draw
         (State/create
-          {:deck    (shuffle (:discard state))
-           :hard    (:hand state)
+          {:deck    (:discard state)
+           :hand    (:hand state)
            :discard []
            :supply  (:supply state)})
         remaining)
-      (draw (State/create
-              {:deck    (drop 1 (:deck state))
-               :hand    (conj (:hand state) (first (:deck state)))
-               :discard (:discard state)
-               :supply  (:supply state)})
-            (dec remaining)))))
+    :otherwise
+        (let [deck (shuffle (:deck state))]
+          (draw (State/create
+                  {:deck    (drop 1 deck)
+                   :hand    (conj (:hand state) (first deck))
+                   :discard (:discard state)
+                   :supply  (:supply state)})
+                (dec remaining))) ))
 
 (defn deal [state]
   (draw state 5))
-
-(defrecord Card [name cost types victory-value money-value])
 
 (def estate (Card/create {
                 :name          :estate
@@ -65,12 +69,11 @@
                 :victory-value 0
                 :money-value   3}))
 
-(defrecord State [supply deck discard hard])
-
 (def state (State/create {
                 :hand    []
                 :deck    []
                 :discard (concat (repeat 3 estate) (repeat 7 copper))
+                ;:discard (concat (repeat 6 copper))
                 :supply  {
                           copper   50
                           estate   8
@@ -79,4 +82,28 @@
                           gold     20
                           province 8}}))
 
-(println (deal state))
+(defn round [state]
+  ;(println "before deal" (map :name (:hand state)) "/" (map :name (:deck state)) "/" (map :name (:discard state)))
+  (let [state    (deal state)
+        money       (apply + (map :money-value (:hand state)))
+        preferences #{:province :gold :silver}
+        options     (filter (fn [card]
+                              (and (<= (:cost card) money)
+                                   (> (get (:supply state) card) 0)
+                                   (contains? preferences (:name card)))) (keys (:supply state)))
+        purchase    (last options)]
+    ;(println "before purchase" (map :name (:hand state)) "/" (map :name (:deck state)) "/" (map :name (:discard state)))
+    (println (map :name (:hand state)) "\t-->" money (if (nil? purchase) nil (:name purchase)))
+    (State/create {
+       :hand    []
+       :deck    (:deck state)
+       :discard (concat (:discard state) (:hand state) (if (nil? purchase) [] [purchase]))
+                        :supply (:supply state)})))
+
+(loop [turn 1
+       state state]
+  (let [state     (round state)
+        provinces (count (filter (fn [card] (= (:name card) :province)) (concat (:discard state) (:deck state))))]
+    (println turn provinces)
+    (if (< provinces 6)
+      (recur (inc turn) state))))
