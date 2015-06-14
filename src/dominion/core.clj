@@ -90,16 +90,20 @@
                           province 8}
                 :turn    0}))
 
-(defn round [state]
-  ;(println "before deal" (map :name (:hand state)) "/" (map :name (:deck state)) "/" (map :name (:discard state)))
-  (let [state    (deal state)
-        money       (apply + (map :money-value (:hand state)))
-        preferences #{:province :gold :silver}
+(defn simple-big-money [state money]
+  (let [preferences #{:province :gold :silver}
         options     (filter (fn [card]
                               (and (<= (:cost card) money)
                                    (> (get (:supply state) card) 0)
                                    (contains? preferences (:name card)))) (keys (:supply state)))
         purchase    (last options)]
+    purchase))
+
+(defn round [state]
+  ;(println "before deal" (map :name (:hand state)) "/" (map :name (:deck state)) "/" (map :name (:discard state)))
+  (let [state    (deal state)
+        money       (apply + (map :money-value (:hand state)))
+        purchase    (simple-big-money state money)]
     ;(println "before purchase" (map :name (:hand state)) "/" (map :name (:deck state)) "/" (map :name (:discard state)))
     ;(println (map :name (:hand state)) "\t-->" money (if (nil? purchase) nil (:name purchase)))
     (State/create {
