@@ -99,11 +99,11 @@
         purchase    (last options)]
     purchase))
 
-(defn round [state]
+(defn round [state strategy]
   ;(println "before deal" (map :name (:hand state)) "/" (map :name (:deck state)) "/" (map :name (:discard state)))
   (let [state    (deal state)
         money       (apply + (map :money-value (:hand state)))
-        purchase    (simple-big-money state money)]
+        purchase    (strategy state money)]
     ;(println "before purchase" (map :name (:hand state)) "/" (map :name (:deck state)) "/" (map :name (:discard state)))
     ;(println (map :name (:hand state)) "\t-->" money (if (nil? purchase) nil (:name purchase)))
     (State/create {
@@ -113,20 +113,17 @@
        :supply  (:supply state)
        :turn    (:turn state)})))
 
-(defn rollout [state]
+(defn rollout [state strategy]
   (loop [state state]
-    (let [state     (round state)
+    (let [state     (round state strategy)
           provinces (count (filter (fn [card] (= (:name card) :province)) (concat (:discard state) (:deck state))))]
       ;(println (:turn state) provinces)
       (if (< provinces 6)
         (recur state)
         state))))
 
-(defn randomize [state]                                     ;; TODO
-  state)
-
 (defn evaluate [state]
-  (let [games   (map (fn [game] (:turn (rollout (randomize state)))) (range 100))
+  (let [games   (pmap (fn [game] (:turn (rollout state simple-big-money))) (range 100))
         average (/ (apply + games) (count games))]
     (println (double average))))
 
